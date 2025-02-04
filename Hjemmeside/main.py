@@ -5,24 +5,18 @@ import re
 import os
 from flask_bcrypt import Bcrypt
 import dotenv
-
+#   Objects
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
 dotenv.load_dotenv()
 
-key_secret = os.getenv('FLASK_APP_KEY')
-host_var = os.getenv('MYSQL_HOST')
-user_var = os.getenv('MYSQL_USER')
-pswd_var = os.getenv('MYSQL_PASSWORD')
-db_var = os.getenv('MYSQL_DB')
-
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
-app.secret_key = key_secret
-app.config['MYSQL_HOST'] = host_var
-app.config['MYSQL_USER'] = user_var
-app.config['MYSQL_PASSWORD'] = pswd_var
-app.config['MYSQL_DB'] = db_var
+app.secret_key = os.getenv('FLASK_APP_KEY')
+app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
+app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')
+app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
+app.config['MYSQL_DB'] = os.getenv('MYSQL_DB')
 
 mysql = MySQL(app)
 

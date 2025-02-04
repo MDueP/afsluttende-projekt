@@ -5,6 +5,7 @@ import re
 import os
 from flask_bcrypt import Bcrypt
 import dotenv
+
 #   Objects
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
@@ -17,23 +18,17 @@ app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
 app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')
 app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
 app.config['MYSQL_DB'] = os.getenv('MYSQL_DB')
-
 mysql = MySQL(app)
 
-
+# SSL - Pathing
 cert_file = os.path.abspath('cert.pem')
 pkey_file = os.path.abspath('key.pem')
 
-restricted_usernames = {"administrator", "admin", "user", "user1", "test", "user2", "test1", "user3", "admin1",
-                        "1", "123", "a", "actuser", "adm", "admin2", "aspnet", "backup", "console", "david",
-                        "guest", "john", "owner", "root", "server", "sql", "support", "support_388945a0",
-                        "sys", "test2", "test3", "user4", "user5"}
-
-
+#  Functions
 def valid_username(username):
     windows_invalid = re.compile(r'[/"\[\]:|<>+=;,?*@&]')
     linux_invalid = re.compile(r'^[a-zA-Z0-9]+$')
-    if username.lower() in restricted_usernames:
+    if username.lower() in os.getenv('restricted_usernames'):
         return False, "That username is too generic and is not allowed"
     if windows_invalid.search(username) or username.endswith('.'):
         return False, "Username cannot contain special characters /""[]:|<>+=;,?*@&"
@@ -49,7 +44,12 @@ def valid_password(password):
         r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{12,123}$')
     return password_contains.match(password)
 
+def gen_shell_script(template_path, **kwargs):
+    with open(template_path, 'r') as template_file:
+        template = template_file.read()
+    return template.format(**kwargs)
 
+# Routes
 @app.route('/', methods=['GET', 'POST'])
 def login():
     msg = ''
@@ -144,103 +144,22 @@ def form():
                 msg = "Passwords do not match"
             else:
                 image_offer, image_publisher, image_sku = os_image.split(';')
-                if image_offer == "Debian-11" or image_offer == "0001-com-ubuntu-server-jammy":
-                    linux = "-Linux"
-                else:
-                    linux = ""
+                linux = "-Linux" if image_offer in ["Debian-11", "0001-com-ubuntu-server-jammy"] else ""
 
-                shell_script = f"""
-Connect-AzAccount
-
-#Azure Account - Info
-$resourcegroup = '{resource_group}'
-$location = 'westeurope'
-
-#VM Account - Info
-$adminUsername = "{admin_username}"
-$adminPassword = ConvertTo-SecureString "{admin_password}" -AsPlainText -Force
-$credential = New-Object System.Management.Automation.PSCredential ($adminUsername, $adminPassword)
-
-#VM - Info
-$vmName = "{vm_name}"
-
-$imagepub = "{image_publisher}"
-$imageoffer = "{image_offer}"
-$imagesku = "{image_sku}"
-
-#Networking
-$subnet_name = '{subnet}'
-$vnet_name = '{virtual_network}'
-
-#Resource Group
-New-AzResourceGroup -Name $resourcegroup -Location $location
-
-#Vnet
-$subnet = New-AzVirtualNetworkSubnetConfig `
-    -Name $subnet_name `
-    -AddressPrefix "10.0.0.0/24"
-
-New-AzVirtualNetwork -Name $vnet_name `
-    -ResourceGroupName $resourcegroup `
-    -Location $location `
-    -AddressPrefix "10.0.0.0/16" `
-    -Subnet $subnet
-
-$Subnet = Get-AzVirtualNetwork -Name $vnet_name -ResourceGroupName $resourcegroup
-
-$publicIP = New-AzPublicIPAddress `
-    -Name "$vmName-ip" `
-    -ResourceGroupName $resourcegroup `
-    -Location $location `
-    -AllocationMethod Static `
-    -Sku Standard
-
-$nic = New-AzNetworkInterface `
-    -Name "$vmName-nic" `
-    -ResourceGroupName $resourcegroup `
-    -Location $location `
-    -SubnetId $Subnet.Subnets[0].Id `
-    -PublicIpAddressId $publicIp.Id
-
-#Config of the virtual machine -VMSize has to be changed to v5. We only have access to deploy up to v4
-$vm_config = New-AzVMConfig `
-    -VMName $vmName `
-    -VMSize "Standard_D2ds_v4" `
-    -SecurityType "Standard" `
-    -IdentityType "SystemAssigned"
-
-$vm_config = Set-AzVMOperatingSystem `
-    -VM $vm_config `
-    -ComputerName $vmName `
-    -Credential $credential `
-    {linux}
-
-$vm_config = Set-AzVMSourceImage `
-    -VM $vm_config `
-    -PublisherName "$imagepub" `
-    -Offer "$imageoffer" `
-    -Skus "$imagesku" `
-    -Version "latest"
-
-
-#Adds the networkinterface to the VM
-$vm_config = Add-AzVMNetworkInterface `
-    -VM $vm_config `
-    -Id $nic.Id
-
-$vm_config = Add-AzVMDataDisk `
-    -VM $vm_config `
-    -Name "disk1" `
-    -DiskSizeInGB {disk_size} `
-    -CreateOption "Empty" `
-    -DeleteOption "Delete" `
-    -Lun 1
-
-New-AzVM `
-    -ResourceGroupName $resourcegroup `
-    -Location $location `
-    -VM $vm_config
-"""
+                shell_script = gen_shell_script(
+                    'vm_template.ps1',
+                    resource_group=resource_group,
+                    vm_name=vm_name,
+                    admin_username=admin_username,
+                    admin_password=admin_password,
+                    image_publisher=image_publisher,
+                    image_offer=image_offer,
+                    image_sku=image_sku,
+                    virtual_network=virtual_network,
+                    subnet=subnet,
+                    disk_size=disk_size,
+                    linux=linux
+                )
                 powershell_path = os.path.abspath('vm_create.ps1')
                 with open(powershell_path, 'w') as ps_file:
                     ps_file.write(shell_script)

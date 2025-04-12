@@ -1,2 +1,9 @@
 .venv/
-.env
+*.env
+WebApp-Docker/services/web/project/__pycache__/__init__.cpython-312.pyc
+WebApp-Docker/services/web/project/__pycache__/config.cpython-312.pyc
+WebApp-Docker/.env.dev
+.env.sample
+WebApp-Docker/.env.dev.db
+WebApp-Docker/.env.prod
+WebApp-Docker/.env.prod.db

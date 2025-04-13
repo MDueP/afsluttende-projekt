@@ -8,7 +8,8 @@ import app_config
 __version__ = "0.9.0"  # The version of this sample, for troubleshooting purpose
 
 app = Flask(__name__)
-app.config.from_object(app_config)
+app.config.from_object(app_config.Config)
+
 Session(app)
 from werkzeug.middleware.proxy_fix import ProxyFix
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
@@ -17,16 +18,16 @@ auth = identity.web.Auth(
     authority=app.config["AUTHORITY"],
     client_id=app.config["CLIENT_ID"],
     client_credential=app.config["CLIENT_SECRET"],
-    redirect_uri=app.config("REDIRECT_URI"),
 
 )
+print("CLIENT_ID:", app.config["CLIENT_ID"])
 
 @app.route("/login")
 def login():
     return render_template("login.html", version=identity.__version__, **auth.log_in(
-        scopes=app_config.SCOPE, # Have user consent to scopes during log-in
-        redirect_uri=url_for("auth_response", _external=True), # Optional. If present, this absolute URL must match your app's redirect_uri registered in Azure Portal
-        ))
+        scopes=app.config["SCOPE"],
+        redirect_uri=url_for("auth_response", _external=True),
+    ))
 
 
 @app.route("/logout")
@@ -44,15 +45,21 @@ def index():
         return redirect(url_for("login"))
     return render_template('index.html', user=auth.get_user(), version=identity.__version__)
 
+@app.route(app.config["REDIRECT_PATH"])
+def auth_response():
+    result = auth.complete_log_in(request.args)
+    if "error" in result:
+        return render_template("auth_error.html", result=result)
+    return redirect(url_for("index"))
 
 @app.route("/call_downstream_api")
 def call_downstream_api():
-    token = auth.get_token_for_user(app_config.SCOPE)
+    token = auth.get_token_for_user(app.config["SCOPE"])
     if "error" in token:
         return redirect(url_for("login"))
     # Use access token to call downstream api
     api_result = requests.get(
-        app_config.ENDPOINT,
+        app.config["ENDPOINT"],
         headers={'Authorization': 'Bearer ' + token['access_token']},
         timeout=30,
     ).json()

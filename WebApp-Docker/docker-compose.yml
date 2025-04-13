@@ -1,0 +1,65 @@
+services:
+  web:
+    build:
+        context: ./services/web
+        target: dev
+    command: python manage.py run -h 0.0.0.0
+    volumes:
+      - ./services/web:/usr/src/app/
+    ports:
+      - 8001:8000
+    env_file:
+      - ./.env.dev
+    depends_on:
+      - db
+    profiles:
+      - dev
+
+  web-prod:
+    build:
+        context: ./services/web
+        dockerfile: Dockerfile
+        target: prod
+    command: gunicorn --bind 0.0.0.0:5000 manage:app
+    volumes:
+      - static_volume:/home/app/web/project/static/
+    expose:
+      - 5000
+    env_file:
+      - ./.env.prod
+    depends_on:
+      - db-prod
+    profiles:
+      - prod
+  nginx-prod:
+    build: ./services/nginx
+    volumes:
+      - static_volume:/home/app/web/project/static/
+    ports:
+      - 443:80
+    depends_on:
+      - web-prod
+    profiles:
+      - prod
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - ./.env.dev.db
+    profiles:
+      - dev
+
+  db-prod:
+    image: postgres:13
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data/
+    env_file:
+      - ./.env.prod.db
+    profiles:
+      - prod
+
+volumes:
+  postgres_data:
+  postgres_data_prod:
+  static_volume:

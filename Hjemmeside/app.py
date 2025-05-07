@@ -6,7 +6,6 @@ from flask import (
     request,
     session,
     url_for,
-    send_file,
     jsonify,
 )
 from flask_session import Session
@@ -15,7 +14,11 @@ import re
 import os
 import uuid
 from msal import ConfidentialClientApplication
+import json
 
+
+######################
+# Encapsulation
 app = Flask(__name__)
 app.config.from_object(app_config.Config)
 
@@ -27,6 +30,45 @@ msal_app = ConfidentialClientApplication(
     authority=app.config["AUTHORITY"],
     client_credential=app.config["CLIENT_SECRET"],
 )
+
+###############
+# Gets - Oplysninger
+
+
+def get_access_token():
+    if "access_token" in session:
+        return session["access_token"]
+    return None
+
+
+##############
+# Role Assignment
+
+
+def rolletildeling(subscription_id, resource_group, role, user_object_id, access_token):
+    url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Authorization/roleAssignments/{str(uuid.uuid4())}?api-version=2021-04-01"
+
+    role_def_id = f"/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleAssignments/{role}"
+
+    payload = {
+        "properties": {"roleDefinitionID": role_def_id, "principalId": user_object_id}
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {access_token}",
+    }
+
+    response = requests.put(url, data=json.dumps(payload), headers=headers)
+
+    if response.status_code == 201:
+        return "Role assignment successful"
+    else:
+        return f"Error: {response.status_code}, {response.text}"
+
+
+##############
+# Funktioner
 
 
 def valid_username(username):
@@ -53,19 +95,24 @@ def valid_password(password):
     return password_contains.match(password)
 
 
-def gen_shell_script(template_path, **kwargs):
-    with open(template_path, "r") as template_file:
-        template = template_file.read()
-    return template.format(**kwargs)
+################################
+# Route
+
+
+@app.route("/")
+def home():
+    if not session.get("user"):
+        return redirect(url_for("login"))
+    return render_template("home.html", user=session["user"])
 
 
 @app.route("/login")
 def login():
     session["state"] = str(uuid.uuid4())
     auth_url = msal_app.get_authorization_request_url(
-        app.config["SCOPE"],
+        scopes=app.config["SCOPE"],
         state=session["state"],
-        redirect_uri=url_for("auth_response", _external=True),
+        redirect_uri=url_for("authorized", _external=True),
     )
     return redirect(auth_url)
 
@@ -76,24 +123,38 @@ def logout():
     return redirect(url_for("home"))
 
 
-@app.route(app.config["REDIRECT_PATH"])
-def auth_response():
+@app.route(app.config["TOKEN_URI"])
+def authorized():
     if request.args.get("state") != session.get("state"):
-        return redirect(url_for("auth_error"))
+        return "State error", 400
 
     code = request.args.get("code")
     result = msal_app.acquire_token_by_authorization_code(
         code,
         scopes=app.config["SCOPE"],
-        redirect_uri=url_for("auth_response", _external=True),
+        redirect_uri=url_for("authorized", _external=True),
     )
 
     if "access_token" in result:
-        session["user"] = result.get("id_token_claims")
         session["access_token"] = result["access_token"]
+        session["user"] = result.get("id_token_claims", {})
+        session["account"] = result.get("id_token_claims", {}).get("oid")
         return redirect(url_for("home"))
-    else:
-        return redirect(url_for("auth_error"))
+    return f"error: {result.get('error_description')}"
+
+
+@app.route("/subscriptions")
+def subscriptions():
+    token = session.get("access_token")
+    if not token:
+        return jsonify({"error": "Not authenticated"}), 401
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.get(
+        "https://management.azure.com/subscriptions?api-version=2020-01-01",
+        headers=headers,
+        timeout=30,
+    ).json()
+    return jsonify(response)
 
 
 @app.route("/call_downstream_api")
@@ -111,7 +172,7 @@ def call_downstream_api():
 
 @app.errorhandler(404)
 def not_found_error(error):
-    return render_template("404.html"), 404
+    return "This page does not exist", 404
 
 
 @app.route("/auth_error")
@@ -119,107 +180,135 @@ def auth_error():
     return render_template("auth_error.html", result={})
 
 
-@app.route("/api/list-resource-groups")
+@app.route("/arm_authorized")
+def arm_authorized():
+    print("Request state:", request.args.get("state"))
+    print("Session state:", session.get("state"))
+    if request.args.get("state") != session.get("state"):
+        return "State error", 400
+
+    code = request.args.get("code")
+    print(code)
+    result = msal_app.acquire_token_by_authorization_code(
+        code,
+        scopes=["https://management.azure.com/.default"],
+        redirect_uri=url_for("arm_authorized", _external=True),
+    )
+    print("Result:", result)
+    if "access_token" in result:
+        session["access_token"] = result["access_token"]
+        session["user"] = result.get("id_token_claims", {})
+        session["account"] = result.get("id_token_claims", {}).get("oid")
+        return redirect(url_for("subscriptions"))
+    return f"error: {result.get('error_description')}"
+
+
+@app.route("/list-resource-groups")
 def list_resource_groups():
-    token = session.get("access_token")
+    token = get_access_token()
     if not token:
-        return jsonify({"error": "Not authenticated"}), 401
+        return redirect(url_for("login"))
 
-    subscription_id = request.args.get("subscription_id")
-    if not subscription_id:
-        return jsonify({"error": "Missing subscription_id"}), 400
+    endpoint = "https://management.azure.com/subscriptions?api-version=2020-01-01"
 
-    url = f"https://management.azure.com/subscriptions/{subscription_id}/resourcegroups?api-version=2021-04-01"
     headers = {"Authorization": f"Bearer {token}"}
 
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        groups = response.json().get("value", [])
-        result = [group["name"] for group in groups]
-        return jsonify(result)
+    response = requests.get(endpoint, headers=headers)
+
+    if response.status_code != 200:
+        print(f"Error fetching subscriptionID: {response}, {response.text}")
+        return jsonify({"error": "Couldn't fetch SubscriptionID"}), 400
+    sub_data = response.json().get("value", [])
+    if not sub_data:
+        return jsonify({"error": "No Subscriptions found"}), 404
+
+    subscription_id = sub_data[0]["subscriptionId"]
+    rg_endpoint = f"https://management.azure.com/subscriptions/{subscription_id}/resourcegroups?api-version=2021-04-01"
+    rg_response = requests.get(rg_endpoint, headers=headers)
+
+    if rg_response.status_code == 200:
+        groups = rg_response.json().get("value", [])
+        group_names = [group["name"] for group in groups]
+
+        return render_template("resource_group.html", groups=group_names)
     else:
-        return jsonify({"error": response.text}), response.status_code
-
-
-@app.route("/")
-def home():
-    if not session.get("user"):
-        return redirect(url_for("login"))
-    return render_template("home.html", user=session["user"])
+        print(
+            f"Error fetching resource groups: {rg_response.status_code}, {rg_response.text}"
+        )
+        return jsonify({"error": "could not fetch resource groups"}), 400
 
 
 @app.route("/vm_form")
 def show_vm_form():
     if not session.get("user"):
         return redirect(url_for("login"))
-    return render_template(
-        "form.html", username=session.get("user", {}).get("name"), msg=""
-    )
+    return render_template("form.html", user=session["user"])
 
 
-@app.route("/deploy", methods=["POST"])
-def deploy_vm():
-    token = session.get("access_token")
-    if not token:
-        return redirect(url_for("login"))
+# @app.route("/deploy", methods=["POST"])
+# def deploy_vm():
+#     token = get_azure_token
+#     if not token:
+#         return redirect(url_for("login"))
 
-    resource_group = request.form["resource_group"]
-    vm_name = request.form["vm_name"]
-    location = request.form["location"]
-    admin_username = request.form["admin_username"]
-    admin_password = request.form["admin_password"]
-    os_image = request.form["os_image"]
-    disk_size = request.form["disk_size"]
-    virtual_network = request.form["virtual_network"]  # extra
-    subnet = request.form["subnet"]  # extra
-    subscription_id = request.form["subscription_id"]  # extra
-    vm_size = request.form["vm_size"]
-    nic_id = request.form["nic_id"]  # extra
+#     resource_group = request.form["resource_group"]
+#     vm_name = request.form["vm_name"]
+#     location = request.form["location"]
+#     admin_username = request.form["admin_username"]
+#     admin_password = request.form["admin_password"]
+#     os_image = request.form["os_image"]
+#     disk_size = request.form["disk_size"]
+#     virtual_network = request.form["virtual_network"]
+#     subnet = request.form["subnet"]
+#     subscription_id = request.form["subscription_id"]  # extra
+#     vm_size = request.form["vm_size"]
+#     nic_id = request.form["nic_id"]  # extra
 
-    publisher, offer, sku = os_image.split(";")
+#     publisher, offer, sku = os_image.split(";")
 
-    bicep_template = f"""
-param adminUsername string = '{admin_username}'
-param adminPassword string = '{admin_password}'
-param vmName string = '{vm_name}'
-param location string = '{location}'
-param subnetId string =
+#     payload = {
+#         "location": location,
+#         "properties": {
+#             "hardwareProfile": {"vmSize": vm_size},
+#             "storageProfile": {
+#                 "imageReference": {
+#                     "publisher": publisher,
+#                     "offer": offer,
+#                     "sku": sku,
+#                     "version": "latest",
+#                 },
+#                 "osDisk": {"createOption": "FromImage", "diskSizeGB": disk_size},
+#             },
+#             "osProfile": {
+#                 "computerName": vm_name,
+#                 "adminUsername": admin_username,
+#                 "adminPassword": admin_password,
+#             },
+#             "networkProfile": {"networkInterfaces": [{"id": nic_id}]},
+#         },
+#     }
 
-resource vm 'Microsoft.Compute/virtualMachines@2021-03-01' = {{
-    name: vmName
-    location: location
-    properties: {{
-        hardwareProfile: {{
-            vmSize: '{vm_size}'
-        }}
-        osProfile: {{
-            computerName: vmName
-            adminUsername: adminUsername
-            adminPassword: adminPassword
-        }}
-        storageProfile: {{
-            imageReference: {{
-                publisher: '{publisher}'
-                offer: '{offer}'
-                sku: '{sku}'
-                version: 'latest'
-            }}
-            osDisk: {{
-                createOption: 'FromImage'
-                diskSizeGB: {disk_size}
-            }}
-        }}
-        networkProfile: {{
-             networkInterfaces: [
-        {{
-          id: '/subscriptions/<subscription-id>/resourceGroups/{resource_group}/providers/Microsoft.Network/networkInterfaces/${{vmName}}NIC'
-        }}
-      ]
-    }}
-  }}
-}}
-"""
+#     endpoint = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Compute/virtualMachines/{vm_name}?api-version=2023-07-01"
 
-    session["bicep_template"] = bicep_template
+#     response = requests.put(
+#         endpoint,
+#         headers={
+#             "Authorization": f"Bearer {token}",
+#             "Content-Type": "application/json",
+#         },
+#         json=payload,
+#         timeout=60,
+#     )
 
-    return render_template("bicep_preview.html", bicep_code=bicep_template)
+#     if response.status_code in [200, 201, 202]:
+#         return jsonify(
+#             {"message": "VM deployment started!", "details": response.json()}
+#         )
+#     else:
+#         return jsonify({"error": response.text}), response.status_code
+
+
+########################################
+# App Run
+
+app.run(host="localhost", debug=True, port=5000)

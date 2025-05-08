@@ -15,6 +15,7 @@ import os
 import uuid
 from msal import ConfidentialClientApplication
 import json
+import time
 
 
 ######################
@@ -245,67 +246,168 @@ def show_vm_form():
     return render_template("form.html", user=session["user"])
 
 
-# @app.route("/deploy", methods=["POST"])
-# def deploy_vm():
-#     token = get_azure_token
-#     if not token:
-#         return redirect(url_for("login"))
+@app.route("/deploy", methods=["POST"])
+def deploy_vm():
+    token = session.get("access_token")
+    if not token:
+        return jsonify({"error": "Not authenticated"}), 401
 
-#     resource_group = request.form["resource_group"]
-#     vm_name = request.form["vm_name"]
-#     location = request.form["location"]
-#     admin_username = request.form["admin_username"]
-#     admin_password = request.form["admin_password"]
-#     os_image = request.form["os_image"]
-#     disk_size = request.form["disk_size"]
-#     virtual_network = request.form["virtual_network"]
-#     subnet = request.form["subnet"]
-#     subscription_id = request.form["subscription_id"]  # extra
-#     vm_size = request.form["vm_size"]
-#     nic_id = request.form["nic_id"]  # extra
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    sub_response = requests.get(
+        "https://management.azure.com/subscriptions?api-version=2020-01-01",
+        headers=headers,
+    )
+    if sub_response.status_code != 200:
+        return jsonify({"error": "Couldn't fetch SubscriptionID"}), 400
+    sub_data = sub_response.json().get("value", [])
+    if not sub_data:
+        return jsonify({"error": "No Subscriptions found"}), 404
 
-#     publisher, offer, sku = os_image.split(";")
+    subscription_id = sub_data[0]["subscriptionId"]
+    resource_group = request.form["resource_group"]
+    vm_name = request.form["vm_name"]
+    location = request.form["location"]
+    admin_username = request.form["admin_username"]
+    admin_password = request.form["admin_password"]
+    confirm_password = request.form["confirm_password"]
+    os_image = request.form["OS_Image"]
+    disk_size = request.form["disk_size"]
+    vm_size = request.form["vm_size"]
 
-#     payload = {
-#         "location": location,
-#         "properties": {
-#             "hardwareProfile": {"vmSize": vm_size},
-#             "storageProfile": {
-#                 "imageReference": {
-#                     "publisher": publisher,
-#                     "offer": offer,
-#                     "sku": sku,
-#                     "version": "latest",
-#                 },
-#                 "osDisk": {"createOption": "FromImage", "diskSizeGB": disk_size},
-#             },
-#             "osProfile": {
-#                 "computerName": vm_name,
-#                 "adminUsername": admin_username,
-#                 "adminPassword": admin_password,
-#             },
-#             "networkProfile": {"networkInterfaces": [{"id": nic_id}]},
-#         },
-#     }
+    vnet_name = f"{vm_name}-vnet"
+    subnet_name = f"{vm_name}-subnet"
+    ip_name = f"{vm_name}-ip"
+    nic_name = f"{vm_name}-nic"
 
-#     endpoint = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Compute/virtualMachines/{vm_name}?api-version=2023-07-01"
+    if admin_password != confirm_password:
+        return jsonify({"error": "Passwords do not match"}), 400
 
-#     response = requests.put(
-#         endpoint,
-#         headers={
-#             "Authorization": f"Bearer {token}",
-#             "Content-Type": "application/json",
-#         },
-#         json=payload,
-#         timeout=60,
-#     )
+    offer, publisher, sku = os_image.split(";")
+    linux = "-Linux" if offer in ["Debian-11", "0001-com-ubuntu-server-jammy"] else ""
+    if linux:
+        os_profile = {
+            "computerName": vm_name,
+            "adminUsername": admin_username,
+            "adminPassword": admin_password,
+            "linuxConfiguration": {"disablePasswordAuthentication": False},
+        }
+    else:
+        os_profile = {
+            "computerName": vm_name,
+            "adminUsername": admin_username,
+            "adminPassword": admin_password,
+            "windowsConfiguration": {"enableAutomaticUpdates": True},
+        }
+    vnet_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/virtualNetworks/{vnet_name}?api-version=2023-04-01"
+    #################################################
+    # Payload
+    vnet_payload = {
+        "location": location,
+        "properties": {
+            "addressSpace": {"addressPrefixes": ["10.0.0.0/16"]},
+            "subnets": [
+                {"name": subnet_name, "properties": {"addressPrefix": "10.0.0.0/24"}}
+            ],
+        },
+    }
+    vnet_resp = requests.put(vnet_url, headers=headers, json=vnet_payload)
+    if vnet_resp.status_code not in [200, 201, 202]:
+        return f"Failed creating VNet: {vnet_resp.text}", 400
 
-#     if response.status_code in [200, 201, 202]:
-#         return jsonify(
-#             {"message": "VM deployment started!", "details": response.json()}
-#         )
-#     else:
-#         return jsonify({"error": response.text}), response.status_code
+    subnet_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/virtualNetworks/{vnet_name}/subnets/{subnet_name}?api-version=2023-04-01"
+
+    for i in range(10):
+        subnet_resp = requests.get(subnet_url, headers=headers)
+        if subnet_resp.status_code == 200:
+            state = subnet_resp.json().get("properties", {}).get("provisioningState")
+            if state == "Succeeded":
+                print("Subnet is ready!")
+                break
+            else:
+                print(f"Subnet state: {state}, waiting...")
+        else:
+            print(f"Error checking subnet: {subnet_resp.text}")
+        time.sleep(3)
+    else:
+        return "Subnet provisioning timed out!", 400
+
+    ip_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/publicIPAddresses/{ip_name}?api-version=2023-04-01"
+    ip_payload = {
+        "location": location,
+        "sku": {"name": "Standard"},
+        "properties": {"publicIPAllocationMethod": "Static"},
+    }
+    ip_resp = requests.put(ip_url, headers=headers, json=ip_payload)
+    if ip_resp.status_code not in [200, 201, 202]:
+        return f"Failed creating Public IP: {ip_resp.text}", 400
+
+    nic_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/networkInterfaces/{nic_name}?api-version=2023-04-01"
+    nic_payload = {
+        "location": location,
+        "properties": {
+            "ipConfigurations": [
+                {
+                    "name": "ipconfig1",
+                    "properties": {
+                        "subnet": {
+                            "id": f"/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/virtualNetworks/{vnet_name}/subnets/{subnet_name}"
+                        },
+                        "publicIPAddress": {
+                            "id": f"/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/publicIPAddresses/{ip_name}"
+                        },
+                    },
+                }
+            ]
+        },
+    }
+    nic_resp = requests.put(nic_url, headers=headers, json=nic_payload)
+    if nic_resp.status_code not in [200, 201, 202]:
+        return f"Failed creating NIC: {nic_resp.text}", 400
+
+    vm_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Compute/virtualMachines/{vm_name}?api-version=2022-03-01"
+    vm_payload = {
+        "location": location,
+        "identity": {"type": "SystemAssigned"},
+        "properties": {
+            "hardwareProfile": {"vmSize": vm_size},
+            "storageProfile": {
+                "imageReference": {
+                    "publisher": publisher,
+                    "offer": offer,
+                    "sku": sku,
+                    "version": "latest",
+                },
+                "osDisk": {
+                    "createOption": "FromImage",
+                    "deleteOption": "Delete",
+                    "managedDisk": {"storageAccountType": "Standard_LRS"},
+                },
+                "dataDisks": [
+                    {
+                        "lun": 1,
+                        "createOption": "Empty",
+                        "diskSizeGB": disk_size,
+                        "deleteOption": "Delete",
+                    }
+                ],
+            },
+            "osProfile": os_profile,
+            "networkProfile": {
+                "networkInterfaces": [
+                    {
+                        "id": f"/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/networkInterfaces/{nic_name}",
+                        "properties": {"primary": True},
+                    }
+                ]
+            },
+        },
+    }
+    vm_resp = requests.put(vm_url, headers=headers, json=vm_payload)
+
+    return f"<pre>{vm_resp.status_code}\n{vm_resp.text}</pre>"
 
 
 ########################################

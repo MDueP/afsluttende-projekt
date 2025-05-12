@@ -1,5 +1,3 @@
-# Description: This file contains the main code for the web application
-############################################################
 import requests
 from flask import (
     Flask,
@@ -11,17 +9,17 @@ from flask import (
     jsonify,
 )
 from flask_session import Session
-import app_config
+from . import app_config
 import uuid
 from msal import ConfidentialClientApplication
 import time
-from flask_sqlalchemy import SQLAlchemy
+
 
 ######################
 # Encapsulation
 app = Flask(__name__)
 app.config.from_object(app_config.Config)
-db = SQLAlchemy(app)
+
 Session(app)
 
 
@@ -31,14 +29,13 @@ msal_app = ConfidentialClientApplication(
     client_credential=app.config["CLIENT_SECRET"],
 )
 
-###############
-# Funktioner
-
 
 def get_access_token():
     if "access_token" in session:
         return session["access_token"]
     return None
+
+
 ################################
 # Route
 
@@ -89,7 +86,7 @@ def authorized():
 
 @app.route("/subscriptions")
 def subscriptions():
-    token = session.get("access_token")
+    token = get_access_token()
     if not token:
         return jsonify({"error": "Not authenticated"}), 401
     headers = {"Authorization": f"Bearer {token}"}
@@ -99,39 +96,6 @@ def subscriptions():
         timeout=30,
     ).json()
     return jsonify(response)
-
-
-@app.errorhandler(404)
-def not_found_error(error):
-    return "This page does not exist", 404
-
-
-@app.route("/auth_error")
-def auth_error():
-    return render_template("auth_error.html", result={})
-
-
-@app.route("/arm_authorized")
-def arm_authorized():
-    print("Request state:", request.args.get("state"))
-    print("Session state:", session.get("state"))
-    if request.args.get("state") != session.get("state"):
-        return "State error", 400
-
-    code = request.args.get("code")
-    print(code)
-    result = msal_app.acquire_token_by_authorization_code(
-        code,
-        scopes=["https://management.azure.com/.default"],
-        redirect_uri=url_for("arm_authorized", _external=True),
-    )
-    print("Result:", result)
-    if "access_token" in result:
-        session["access_token"] = result["access_token"]
-        session["user"] = result.get("id_token_claims", {})
-        session["account"] = result.get("id_token_claims", {}).get("oid")
-        return redirect(url_for("subscriptions"))
-    return f"error: {result.get('error_description')}"
 
 
 @app.route("/list-resource-groups")
@@ -171,14 +135,15 @@ def list_resource_groups():
 
 @app.route("/vm_form")
 def show_vm_form():
-    if not session.get("user"):
-        return redirect(url_for("login"))
+    token = get_access_token()
+    if not token:
+        return redirect(url_for("login")), 401
     return render_template("form.html", user=session["user"])
 
 
 @app.route("/deploy", methods=["POST"])
 def deploy_vm():
-    token = session.get("access_token")
+    token = get_access_token()
     if not token:
         return jsonify({"error": "Not authenticated"}), 401
 
@@ -338,13 +303,13 @@ def deploy_vm():
     vm_resp = requests.put(vm_url, headers=headers, json=vm_payload)
 
     if vm_resp.status_code in [200, 201, 202]:
-        return jsonify({"message": "VM deployment initiated successfully"}), vm_resp.status_code
+        return (
+            jsonify({"message": "VM deployment initiated successfully"}),
+            vm_resp.status_code,
+        )
     else:
         app.logger.error(f"VM deployment failed: {vm_resp.status_code}, {vm_resp.text}")
-        return jsonify({"error": "VM deployment failed. Please contact support."}), vm_resp.status_code
-
-
-########################################
-# App Run
-
-app.run(host="localhost", debug=True, port=5000)
+        return (
+            jsonify({"error": "VM deployment failed. Please contact support."}),
+            vm_resp.status_code,
+        )

@@ -1,21 +1,22 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resource Groups</title>
-</head>
-<body>
-    <h1>Your Azure Resource Groups</h1>
-    <table border="1">
-        <tr>
-            <th>Resource Group Name</th>
-        </tr>
-        {% for group in groups %}
-        <tr>
-            <td>{{ group }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-</body>
-</html>
+{% extends 'layout.html' %}
+
+{% block title %}Resource Groups{% endblock %}
+
+{% block content %}
+<h2>Your Azure Resource Groups</h2>
+<div>
+<table class="table table-bordered">
+        <thead>
+            <th>Resource Group Name:</th>
+        </thead>
+        <tbody>
+            <tr>
+            {% for group in groups %}
+            <tr>
+                <td>{{ group }}</td>
+            {% endfor %}
+            </tr>
+        </tbody>
+</table>
+</div>
+{% endblock %}

@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS base
+FROM python:3.13-slim:alpine AS base
 WORKDIR /usr/src/app
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -11,23 +11,7 @@ RUN pip install --upgrade pip
 COPY ./requirements.txt .
 RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheels -r requirements.txt
 
-FROM base AS dev
-WORKDIR /usr/src/app
-
-COPY ./requirements.txt /usr/src/app/requirements.txt
-
-RUN pip install -r requirements.txt
-
-COPY . /usr/src/app/
-
-RUN chmod +x /usr/src/app/entrypoint.sh  # Ensure script is executable
-
-ENTRYPOINT ["/usr/src/app/entrypoint.sh"]
-
-FROM dev AS lint
-RUN pip install flake8==6.0.0 && flake8 --ignore=E501,F401 .
-
-FROM base AS prod
+FROM base
 
 RUN mkdir -p /home/app
 

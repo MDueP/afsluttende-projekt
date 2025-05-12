@@ -6,11 +6,6 @@
 <h2>Azure VM Creation </h2>
 
 
-
-<p>Hello {{ user.get("name") }}! <br>
-    This is the standard Form for Azure Virtual Machine Creation
-</p>
-
 <form action="{{ url_for('deploy_vm') }}" method="post">
   <div class="mb-3">
     <fieldset class="row mb-3">
@@ -87,6 +82,7 @@
       <legend>Disk and Networking</legend>
       <div class="mb-3 form-check"> 
         <label for="disk_size" class="form-label">Choose Disk Size</label>
+        <br>
         <select class="disk size" name="disk_size" id="disk_size">
             <option selected>Choose Disk size </option>
             <option value="256">default 256 GiB (P15)</option>
@@ -111,7 +107,7 @@
 
     <br>
     <div class="msg">{{ msg }}</div>
-    <button type="submit" value="form" class="btn btn-primary">Submit</button>     
+    <button type="submit" value="form" class="btn custom-btn">Submit</button>     
   </div>
 </form>
 {% endblock %}

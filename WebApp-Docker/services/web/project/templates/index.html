@@ -1,31 +1,29 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.1/css/all.css">
-</head>
-<body>
-  <div class="login">
-      <h1>Login</h1>
-      <div class="links">
-        <a href="{{ url_for('login') }}" class="active">Login</a>
-        <a href="{{ url_for('register') }}">Register</a>
-      </div>
-      <form action="{{ url_for('login') }}" method="post">
-        <label for="email">
-          <i class="fas fa-user"></i>
-        </label>
-        <input type="text" name="email" placeholder="email" id="email" required>
-        <label for="password">
-          <i class="fas fa-lock"></i>
-        </label>
-        <input type="password" name="password" placeholder="Password" id="password" required>
-        <div class="msg">{{ msg }}</div>
-        <input type="submit" value="Login">
-      </form>
-  </div>
-</body>
-</html>
+{% extends 'layout.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<h2>Welcome {{ user.get("name") }}!</h2>
+
+<!-- Display a remote image for now -->
+<img src="https://github.com/Azure-Samples/ms-identity-python-webapp-django/raw/main/static/topology.png" alt="Topology">
+
+<ul>
+    {% if config.get("ENDPOINT") %}
+        <li><a href='/api/list-resource-groups'>Call Resource List API</a></li>
+    {% endif %}
+    
+    {% if config.get("ENDPOINT") %}
+        <li><a href='/call_downstream_api'>Call Read API</a></li>
+    {% endif %}
+
+    {% if edit_profile_url %}
+        <li><a href='{{ edit_profile_url }}'>Edit Profile</a></li>
+    {% endif %}
+
+    <li><a href="{{ url_for('logout') }}">Logout</a></li>
+</ul>
+
+<hr>
+<footer style="text-align: right">{{ title }}</footer>
+{% endblock %}

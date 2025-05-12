@@ -9,3 +9,5 @@ WebApp-Docker/.env.prod.db
 Hjemmeside/app.py
 flask_session/
 .vscode/
+*.png
+WebApp-Docker/.env.db

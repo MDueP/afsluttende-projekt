@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Subscriptions</title>
+</head>
+<body>
+    <h1>Your Azure Subscriptions</h1>
+    <table border="1">
+        <tr>
+            <th>Subscription Name</th>
+            <th>Subscription ID</th>
+        </tr>
+        {% for sub in subscriptions %}
+        <tr>
+            <td>{{ sub.displayName }}</td>
+            <td>{{ sub.subscriptionId }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

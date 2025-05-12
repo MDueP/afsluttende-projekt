@@ -158,19 +158,6 @@ def subscriptions():
     return jsonify(response)
 
 
-@app.route("/call_downstream_api")
-def call_downstream_api():
-    token = session.get("access_token")
-    if not token:
-        return jsonify({"error": "Not authenticated"}), 401
-    api_result = requests.get(
-        app.config["ENDPOINT"],
-        headers={"Authorization": f"Bearer {token}"},
-        timeout=30,
-    ).json()
-    return jsonify(api_result)
-
-
 @app.errorhandler(404)
 def not_found_error(error):
     return "This page does not exist", 404

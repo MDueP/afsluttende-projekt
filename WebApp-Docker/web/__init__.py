@@ -9,7 +9,7 @@ from flask import (
     jsonify,
 )
 from flask_session import Session
-import app_config
+from . import app_config
 import uuid
 from msal import ConfidentialClientApplication
 import time
@@ -19,7 +19,7 @@ import time
 # Encapsulation
 app = Flask(__name__)
 app.config.from_object(app_config.Config)
-Session(app)
+app.secret_key = app.config["SECRETKEY"]
 
 
 msal_app = ConfidentialClientApplication(
@@ -60,11 +60,8 @@ def login():
 @app.route("/logout")
 def logout():
     session.clear()
-    logout_url = (
-        "https://login.microsoftonline.com/common/oauth2/v2.0/logout"
-        f"?post_logout_redirect_uri={url_for('home', _external=True)}"
-    )
-    return redirect(logout_url)
+    return redirect(url_for("home"))
+
 
 @app.route(app.config["TOKEN_URI"])
 def authorized():
@@ -316,9 +313,3 @@ def deploy_vm():
             jsonify({"error": "VM deployment failed. Please contact support."}),
             vm_resp.status_code,
         )
-
-
-########################################
-# App Run
-
-app.run(host="localhost", debug=True, port=5000)

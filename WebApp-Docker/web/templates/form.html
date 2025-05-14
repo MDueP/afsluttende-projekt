@@ -1,28 +1,54 @@
 {% extends 'layout.html' %}
 
-{% block title %}Form{% endblock %}
+{% block title %}VM Form{% endblock %}
 
 {% block content %}
 <h2>Azure VM Creation </h2>
 
-<p>Hello {{ username }}! <br>
-    This is the standard Form for Azure Virtual Machine Creation
-</p>
 
-<form action="{{ url_for('form') }}" method="post" autocomplete="off">
+<form action="{{ url_for('deploy_vm') }}" method="post">
   <div class="mb-3">
     <fieldset class="row mb-3">
       <legend>Basics</legend>
+
       <label for="Resource group" class="form-label">Resource group</label>
       <input type="text" class="form-control" id="resource_group" name="resource_group" placeholder="Name" required>
-    <div class="mb-3">
-      <label for=" vm_name" class="form-label"> Virtual machine</label>
-      <input type="text" class="form-control" id="vm_name" name="vm_name" placeholder="Name" required>
-    </div>
-    <div class="mb-3 form-check"> 
+    
+      <div class="mb-3">
+        <label for=" vm_name" class="form-label"> Virtual machine</label>
+        <input type="text" class="form-control" id="vm_name" name="vm_name" placeholder="Name" required>
+      </div>
 
-      <select class="form-select" name="OSImage" id="OSImage">
-        <option selected>Choose OSImage </option>
+    <div class="mb-3">
+      <label for="location" class="form-label">Location</label>
+      <select class="form-select" name="location" id="location">
+        <option selected>Choose Location </option>
+        <option value="westeurope">Westeurope</option>
+        <option value="northeurope">Northeurope</option>
+        <option value="uksouth">Uksouth</option>
+        <option value="ukwest">Ukwest</option>
+        <option value="eastus">Eastus</option>
+        <option value="eastus2">Eastus2</option>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="vm_size" class="form-label">VM Size</label>
+      <select class="form-select" name="vm_size" id="vm_size">
+        <option selected>Choose VM size </option>
+        <option value="Standard_B1s">Standard_B1s</option>
+        <option value="Standard_B2s">Standard_B2s</option>
+        <option value="Standard_B4ms">Standard_B4ms</option>
+        <option value="Standard_D2s_v3">Standard_D2s_v3</option>
+        <option value="Standard_D4s_v3">Standard_D4s_v3</option>
+        <option value="Standard_D8s_v3">Standard_D8s_v3</option>
+      </select>
+    </div>
+
+    <div class="mb-3"> 
+      <label for="OS_Image" class="form-label">OS Image</label>
+      <select class="form-select" name="OS_Image" id="OS_Image">
+        <option selected>Choose OS Image </option>
         <option value="Debian-11;Debian;11-backports-gen2">Debian11</option>
         <option value="0001-com-ubuntu-server-jammy;Canonical;22_04-lts-gen2">Ubuntu2204</option>
         <option value="WindowsServer;MicrosoftWindowsServer;2022-Datacenter">Win2022Datacenter</option>
@@ -32,7 +58,8 @@
         <option value="WindowsServer;MicrosoftWindowsServer;2012-Datacenter ">Win2012Datacenter</option>
       </select>
     </div>
-    </fieldset>
+  </fieldset>
+
     <br>
     <fieldset class="row mb-3">
       <legend>Adminstrator account</legend>
@@ -49,11 +76,13 @@
         <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="RDM recommended"required>
       </div>
     </fieldset>
+
     <br>
     <fieldset class="row mb-3">
-      <legend>Disk and Networking</legend>
+      <legend>Disk size</legend>
       <div class="mb-3 form-check"> 
         <label for="disk_size" class="form-label">Choose Disk Size</label>
+        <br>
         <select class="disk size" name="disk_size" id="disk_size">
             <option selected>Choose Disk size </option>
             <option value="256">default 256 GiB (P15)</option>
@@ -64,18 +93,11 @@
             <option value="512">512 GiB (P20)</option>
           </select>
       </div>
-      <div class="mb-3">
-        <label for="virtual_network" class="form-label">Virtual Network</label>
-        <input type="text" class="form-control" id="virtual_network" name="virtual_network" placeholder="Name" required>
-      </div>
-      <div class="mb-3">
-        <label for="subnet" class="form-label">Subnet</label>
-        <input type="text" class="form-control" id="subnet" name="subnet" placeholder="Name" required>
-      </div>
     </fieldset>
+
     <br>
     <div class="msg">{{ msg }}</div>
-    <button type="submit" value="form" class="btn btn-primary">Submit</button>     
+    <button type="submit" value="form" class="btn custom-btn">Submit</button>     
   </div>
 </form>
 {% endblock %}

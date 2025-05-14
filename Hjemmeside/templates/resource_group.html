@@ -1,0 +1,22 @@
+{% extends 'layout.html' %}
+
+{% block title %}Resource Groups{% endblock %}
+
+{% block content %}
+<h2>Your Azure Resource Groups</h2>
+<div>
+<table class="table table-bordered">
+        <thead>
+            <th>Resource Group Name:</th>
+        </thead>
+        <tbody>
+            <tr>
+            {% for group in groups %}
+            <tr>
+                <td>{{ group }}</td>
+            {% endfor %}
+            </tr>
+        </tbody>
+</table>
+</div>
+{% endblock %}

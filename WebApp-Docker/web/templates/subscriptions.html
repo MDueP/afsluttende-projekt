@@ -1,0 +1,25 @@
+{% extends 'layout.html' %}
+
+{% block title %}Azure Subscriptions{% endblock %}
+
+{% block content %}
+    <h2>Your Azure Subscriptions</h2>
+    <div>
+    <table class="table table-bordered">
+        <tr>
+            <th>Subscription Name</th>
+            <th>Subscription State</th>
+            <th>Subscription Policy QuotaID</th>
+            <th>Subscription Policy SpendingLimit</th>
+        </tr>
+        {% for sub in subscriptions %}
+        <tr>
+            <td>{{ sub.displayName }}</td>
+            <td>{{ sub.state }}</td>
+            <td>{{ sub.subscriptionPolicies.quotaId }}</td>
+            <td>{{ sub.subscriptionPolicies.spendingLimit }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}

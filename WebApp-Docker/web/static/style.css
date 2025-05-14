@@ -77,13 +77,21 @@ body.loggedin {
   background-color: #ffffff66;
   text-align: center;
   font-family: Arial, Helvetica, sans-serif;
+    font-size: 15px;
+}
+.content > p table td, .content > div table td {
+  padding: 5px;
+  
+}
+.content > p table td:first-child, .content > div table td:first-child {
+  font-weight: bold;
+  color: #fcfcfc;
+  padding-right: 15px;
 
 }
-
 .content > div p {
   padding: 5px;
   margin: 0 0 10px 0;
-  
   
 }
 .center {
@@ -102,40 +110,4 @@ body.loggedin {
     
     border-top: 1px solid #fcfcfc;
     color:#fcfcfc; 
-}
-
-
-.content p {
-    font-size: 15px;
-    text-align: center;
-    color:#fcfcfc; 
-}
-
-.content .mb-3 {
-    color:#fcfcfc;
-    font-weight: bold;
-}
-.custom-btn {
-    background-color: #8ca0b8; 
-    border: none;
-    color: white;
-  }
-
-  .custom-btn:hover {
-    background-color: #94d6ab;
-  }
-.custom-btn1 { 
-border: none;
-color: white;
-}
-
-.custom-btn1:hover {
-background-color: rgb(178, 116, 244) 
-}
-
-.table {
-    border-color: black;
-}
-.table .tbody {
-    color : #fcfcfc
 }

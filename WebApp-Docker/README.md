@@ -8,10 +8,16 @@
 
 
 
-### Ved ændringer eller første setup husk --build
-    docker-compose --profile prod up -d --build
+### Ved ændringer eller første setup husk
     
-    docker-compose --profile prod down -v
+    docker-compose build
+    For services based:
+        docker-compose build nginx
+        docker-compose build web
+
+    docker-compose up -d
+
+    docker-compose down (-v)
 
 
 

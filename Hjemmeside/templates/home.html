@@ -3,10 +3,151 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
-<h2>Home Page</h2>
+<h2>Homepage</h2>
 
-<p style="text-align: center;">omg you did it {{ username }}! <br>
-    Welcome to Irem and Mikkel's website! 
+<p style="text-align: center;">Velkommen til Irem og Mikkel's hjemmeside {{ user.get("name") }}! 
+    <br><br>
+    Med samarbejde med ITM8's default VM settings, kan du nu nemt oprette en VM i Azure ved hjælp af vores formular. 
+    <br>
+    Dette projekt er en viderearbejdelse af vores 1. års projekt, hvor man nu kan deploy VM's instantly uden at downloade et powershell script!
 </p>
+
+
+<h3>Billeder 2024</h3>
+<main>
+
+  <div id="myCarousel" class="carousel slide" data-bs-ride="carousel">
+    <div class="carousel-indicators">
+      <button type="button" data-bs-target="#myCarousel" data-bs-slide-to="0" class="active" aria-label="Slide 1" aria-current="true"></button>
+      <button type="button" data-bs-target="#myCarousel" data-bs-slide-to="1" aria-label="Slide 2" class=""></button>
+      <button type="button" data-bs-target="#myCarousel" data-bs-slide-to="2" aria-label="Slide 3" class=""></button>
+      <button type="button" data-bs-target="#myCarousel" data-bs-slide-to="3" aria-label="Slide 4" class=""></button>
+      <button type="button" data-bs-target="#myCarousel" data-bs-slide-to="4" aria-label="Slide 5" class=""></button>
+    </div>
+    <div class="carousel-inner">
+      <div class="carousel-item active">
+        <img src="static/møde1.png" alt="billede1" style="width: 90%; height: 90%; display: block; margin-left: auto; margin-right: auto;">
+        <div class="container">
+          <div class="carousel-caption text-start">
+          </div>
+        </div>
+      </div>
+      <div class="carousel-item">
+        <img src="static/billede1.png" alt="billede2" style="width: 70%; height: 60%; display: block; margin-left: auto; margin-right: auto;">
+
+        <div class="container">
+          <div class="carousel-caption">
+
+          </div>
+        </div>
+      </div>
+      <div class="carousel-item">
+        <img src="static/billede2.png" alt="billede3" style="width: 40%; height: 40%; display: block; margin-left: auto; margin-right: auto;">
+
+        <div class="container">
+          <div class="carousel-caption text-end">
+          
+          </div>
+        </div>
+      </div>
+      <div class="carousel-item">
+        <img src="static/billede3.png" alt="billede4" style="width: 70%; height: 70%; display: block; margin-left: auto; margin-right: auto;">
+
+        <div class="container">
+          <div class="carousel-caption text-end">
+
+          </div>
+        </div>
+      </div>
+      <div class="carousel-item">
+        <img src="static/billede4.png" alt="billede5" style="width: 50%; height: 50%; display: block; margin-left: auto; margin-right: auto;">
+
+        <div class="container">
+          <div class="carousel-caption text-end">
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="carousel-control-prev" type="button" data-bs-target="#myCarousel" data-bs-slide="prev">
+      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Previous</span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#myCarousel" data-bs-slide="next">
+      <span class="carousel-control-next-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Next</span>
+    </button>
+  </div>
+
+  <br><br>
+
+  <h3>Billeder 2025</h3>
+
+  <div id="myCarousel1" class="carousel slide" data-bs-ride="carousel">
+    <div class="carousel-indicators">
+      <button type="button" data-bs-target="#myCarousel1" data-bs-slide-to="0" class="active" aria-label="Slide 1" aria-current="true"></button>
+      <button type="button" data-bs-target="#myCarousel1" data-bs-slide-to="1" aria-label="Slide 2" class=""></button>
+      <button type="button" data-bs-target="#myCarousel1" data-bs-slide-to="2" aria-label="Slide 3" class=""></button>
+      <button type="button" data-bs-target="#myCarousel1" data-bs-slide-to="3" aria-label="Slide 4" class=""></button>
+      <button type="button" data-bs-target="#myCarousel1" data-bs-slide-to="4" aria-label="Slide 5" class=""></button>
+    </div>
+    <div class="carousel-inner">
+      <div class="carousel-item active">
+        <img src="static/møde1.png" alt="billede1" style="width: 90%; height: 90%; display: block; margin-left: auto; margin-right: auto;">
+        <div class="container">
+          <div class="carousel-caption text-start">
+          </div>
+        </div>
+      </div>
+      <div class="carousel-item">
+        <img src="static/billede5.png" alt="billede2" style="width: 40%; height: 40%; display: block; margin-left: auto; margin-right: auto;">
+
+        <div class="container">
+          <div class="carousel-caption">
+
+          </div>
+        </div>
+      </div>
+      <div class="carousel-item">
+        <img src="static/billede6.png" alt="billede3" style="width: 70%; height: 70%; display: block; margin-left: auto; margin-right: auto;">
+
+        <div class="container">
+          <div class="carousel-caption text-end">
+          
+          </div>
+        </div>
+      </div>
+      <div class="carousel-item">
+        <img src="static/billede7.png" alt="billede4" style="width: 70%; height: 70%; display: block; margin-left: auto; margin-right: auto;">
+
+        <div class="container">
+          <div class="carousel-caption text-end">
+
+          </div>
+        </div>
+      </div>
+      <div class="carousel-item">
+        <img src="static/billede8.png" alt="billede5" style="width: 70%; height: 70%; display: block; margin-left: auto; margin-right: auto;">
+
+        <div class="container">
+          <div class="carousel-caption text-end">
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="carousel-control-prev" type="button" data-bs-target="#myCarousel1" data-bs-slide="prev">
+      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Previous</span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#myCarousel1" data-bs-slide="next">
+      <span class="carousel-control-next-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Next</span>
+    </button>
+  </div>
+
+  <br><br>
+
+</main>
 
 {% endblock %}

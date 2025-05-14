@@ -19,7 +19,6 @@ import time
 # Encapsulation
 app = Flask(__name__)
 app.config.from_object(app_config.Config)
-
 Session(app)
 
 
@@ -61,8 +60,11 @@ def login():
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("home"))
-
+    logout_url = (
+        "https://login.microsoftonline.com/common/oauth2/v2.0/logout"
+        f"?post_logout_redirect_uri={url_for('home', _external=True)}"
+    )
+    return redirect(logout_url)
 
 @app.route(app.config["TOKEN_URI"])
 def authorized():
@@ -88,14 +90,17 @@ def authorized():
 def subscriptions():
     token = get_access_token()
     if not token:
-        return jsonify({"error": "Not authenticated"}), 401
+        return redirect(url_for("login"))
+
     headers = {"Authorization": f"Bearer {token}"}
-    response = requests.get(
-        "https://management.azure.com/subscriptions?api-version=2020-01-01",
-        headers=headers,
-        timeout=30,
-    ).json()
-    return jsonify(response)
+
+    response = requests.get(app.config["ENDPOINT"], headers=headers)
+    if response.status_code == 200:
+        subscriptions = response.json().get("value", [])
+        return render_template("subscriptions.html", subscriptions=subscriptions)
+    else:
+        print(f"Error fetching subscriptions: {response.status_code}, {response.text}")
+        return jsonify({"error": "could not fetch subscriptions"}), 400
 
 
 @app.route("/list-resource-groups")
@@ -104,11 +109,9 @@ def list_resource_groups():
     if not token:
         return redirect(url_for("login"))
 
-    endpoint = "https://management.azure.com/subscriptions?api-version=2020-01-01"
-
     headers = {"Authorization": f"Bearer {token}"}
 
-    response = requests.get(endpoint, headers=headers)
+    response = requests.get(app.config["ENDPOINT"], headers=headers)
 
     if response.status_code != 200:
         print(f"Error fetching subscriptionID: {response}, {response.text}")
@@ -152,7 +155,7 @@ def deploy_vm():
         "Content-Type": "application/json",
     }
     sub_response = requests.get(
-        "https://management.azure.com/subscriptions?api-version=2020-01-01",
+        app.config["ENDPOINT"],
         headers=headers,
     )
     if sub_response.status_code != 200:

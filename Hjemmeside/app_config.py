@@ -12,4 +12,4 @@ class Config(object):
     TOKEN_URI = "/getAToken"
     SCOPE = ["https://management.azure.com/user_impersonation"]
     SESSION_TYPE = "filesystem"
-    ENDPOINT = "https://graph.microsoft.com/v1.0/users"
+    ENDPOINT = "https://management.azure.com/subscriptions?api-version=2020-01-01"

@@ -12,3 +12,5 @@ class Config(object):
     TOKEN_URI = os.getenv("TOKEN_URI")
     SCOPE = os.getenv("SCOPE", "").split(",")
     SESSION_TYPE = os.getenv("SESSION_TYPE")
+    ENDPOINT = os.getenv("ENDPOINT")
+    SECRETKEY = os.getenv("SECRETKEY")

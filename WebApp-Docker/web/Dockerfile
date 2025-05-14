@@ -32,10 +32,6 @@ RUN pip install --no-cache /wheels/*
 
 COPY . $APP_HOME
 
-RUN chown -R app:app $APP_HOME
-RUN mkdir -p $APP_HOME/flask_session && \
-chmod -R 777 $APP_HOME/flask_session && \
-chown -R app:app $APP_HOME/flask_session
 USER app
 
 EXPOSE 5000

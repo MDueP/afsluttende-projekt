@@ -174,149 +174,149 @@ def deploy_vm():
     os_image = request.form["OS_Image"]
     disk_size = request.form["disk_size"]
     vm_size = request.form["vm_size"]
-
-    vnet_name = f"{vm_name}-vnet"
-    subnet_name = f"{vm_name}-subnet"
-    ip_name = f"{vm_name}-ip"
-    nic_name = f"{vm_name}-nic"
+    vm_amount = int(request.form.get("VM Amount", 1))
 
     if admin_password != confirm_password:
         return jsonify({"error": "Passwords do not match"}), 400
 
     offer, publisher, sku = os_image.split(";")
     linux = "-Linux" if offer in ["Debian-11", "0001-com-ubuntu-server-jammy"] else ""
-    if linux:
-        os_profile = {
-            "computerName": vm_name,
-            "adminUsername": admin_username,
-            "adminPassword": admin_password,
-            "linuxConfiguration": {"disablePasswordAuthentication": False},
-        }
-    else:
-        os_profile = {
-            "computerName": vm_name,
-            "adminUsername": admin_username,
-            "adminPassword": admin_password,
-            "windowsConfiguration": {"enableAutomaticUpdates": True},
-        }
-    vnet_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/virtualNetworks/{vnet_name}?api-version=2023-04-01"
-    #################################################
-    # Payload
-    vnet_payload = {
-        "location": location,
-        "properties": {
-            "addressSpace": {"addressPrefixes": ["10.0.0.0/16"]},
-            "subnets": [
-                {"name": subnet_name, "properties": {"addressPrefix": "10.0.0.0/24"}}
-            ],
-        },
-    }
-    vnet_resp = requests.put(vnet_url, headers=headers, json=vnet_payload)
-    if vnet_resp.status_code not in [200, 201, 202]:
-        return f"Failed creating VNet: {vnet_resp.text}", 400
+    for i in range(vm_amount):
+        current_vm_name = f"{vm_name}-{i+1}" if vm_amount > 1 else vm_name
+        vnet_name = f"{current_vm_name}-vnet"
+        subnet_name = f"{current_vm_name}-subnet"
+        ip_name = f"{current_vm_name}-ip"
+        nic_name = f"{current_vm_name}-nic"
 
-    subnet_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/virtualNetworks/{vnet_name}/subnets/{subnet_name}?api-version=2023-04-01"
-
-    for i in range(10):
-        subnet_resp = requests.get(subnet_url, headers=headers)
-        if subnet_resp.status_code == 200:
-            state = subnet_resp.json().get("properties", {}).get("provisioningState")
-            if state == "Succeeded":
-                print("Subnet is ready!")
-                break
-            else:
-                print(f"Subnet state: {state}, waiting...")
+        if linux:
+            os_profile = {
+                "computerName": current_vm_name,
+                "adminUsername": admin_username,
+                "adminPassword": admin_password,
+                "linuxConfiguration": {"disablePasswordAuthentication": False},
+            }
         else:
-            print(f"Error checking subnet: {subnet_resp.text}")
-        time.sleep(3)
-    else:
-        return "Subnet provisioning timed out!", 400
-
-    ip_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/publicIPAddresses/{ip_name}?api-version=2023-04-01"
-    ip_payload = {
-        "location": location,
-        "sku": {"name": "Standard"},
-        "properties": {"publicIPAllocationMethod": "Static"},
-    }
-    ip_resp = requests.put(ip_url, headers=headers, json=ip_payload)
-    if ip_resp.status_code not in [200, 201, 202]:
-        return f"Failed creating Public IP: {ip_resp.text}", 400
-
-    nic_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/networkInterfaces/{nic_name}?api-version=2023-04-01"
-    nic_payload = {
-        "location": location,
-        "properties": {
-            "ipConfigurations": [
-                {
-                    "name": "ipconfig1",
-                    "properties": {
-                        "subnet": {
-                            "id": f"/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/virtualNetworks/{vnet_name}/subnets/{subnet_name}"
-                        },
-                        "publicIPAddress": {
-                            "id": f"/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/publicIPAddresses/{ip_name}"
-                        },
-                    },
-                }
-            ]
-        },
-    }
-    nic_resp = requests.put(nic_url, headers=headers, json=nic_payload)
-    if nic_resp.status_code not in [200, 201, 202]:
-        return f"Failed creating NIC: {nic_resp.text}", 400
-
-    vm_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Compute/virtualMachines/{vm_name}?api-version=2022-03-01"
-    vm_payload = {
-        "location": location,
-        "identity": {"type": "SystemAssigned"},
-        "properties": {
-            "hardwareProfile": {"vmSize": vm_size},
-            "storageProfile": {
-                "imageReference": {
-                    "publisher": publisher,
-                    "offer": offer,
-                    "sku": sku,
-                    "version": "latest",
-                },
-                "osDisk": {
-                    "createOption": "FromImage",
-                    "deleteOption": "Delete",
-                    "managedDisk": {"storageAccountType": "Standard_LRS"},
-                },
-                "dataDisks": [
-                    {
-                        "lun": 1,
-                        "createOption": "Empty",
-                        "diskSizeGB": disk_size,
-                        "deleteOption": "Delete",
-                    }
+            os_profile = {
+                "computerName": current_vm_name,
+                "adminUsername": admin_username,
+                "adminPassword": admin_password,
+                "windowsConfiguration": {"enableAutomaticUpdates": True},
+            }
+        vnet_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/virtualNetworks/{vnet_name}?api-version=2023-04-01"
+        #################################################
+        # Payload
+        vnet_payload = {
+            "location": location,
+            "properties": {
+                "addressSpace": {"addressPrefixes": ["10.0.0.0/16"]},
+                "subnets": [
+                    {"name": subnet_name, "properties": {"addressPrefix": "10.0.0.0/24"}}
                 ],
             },
-            "osProfile": os_profile,
-            "networkProfile": {
-                "networkInterfaces": [
+        }
+        vnet_resp = requests.put(vnet_url, headers=headers, json=vnet_payload)
+        if vnet_resp.status_code not in [200, 201, 202]:
+            return f"Failed creating VNet for {current_vm_name}: {vnet_resp.text}", 400
+
+        subnet_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/virtualNetworks/{vnet_name}/subnets/{subnet_name}?api-version=2023-04-01"
+
+        for i in range(10):
+            subnet_resp = requests.get(subnet_url, headers=headers)
+            if subnet_resp.status_code == 200:
+                state = subnet_resp.json().get("properties", {}).get("provisioningState")
+                if state == "Succeeded":
+                    print(f"Subnet is ready for {current_vm_name}!")
+                    break
+                else:
+                    print(f"Subnet state: {state}, waiting...")
+            time.sleep(3)
+        else:
+            return f"Subnet provisioning timed out for {current_vm_name}!!", 400
+
+        ip_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/publicIPAddresses/{ip_name}?api-version=2023-04-01"
+        ip_payload = {
+            "location": location,
+            "sku": {"name": "Standard"},
+            "properties": {"publicIPAllocationMethod": "Static"},
+        }
+        ip_resp = requests.put(ip_url, headers=headers, json=ip_payload)
+        if ip_resp.status_code not in [200, 201, 202]:
+            return f"Failed creating Public IP for {current_vm_name}: {ip_resp.text}", 400
+
+        nic_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/networkInterfaces/{nic_name}?api-version=2023-04-01"
+        nic_payload = {
+            "location": location,
+            "properties": {
+                "ipConfigurations": [
                     {
-                        "id": f"/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/networkInterfaces/{nic_name}",
-                        "properties": {"primary": True},
+                        "name": "ipconfig1",
+                        "properties": {
+                            "subnet": {
+                                "id": f"/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/virtualNetworks/{vnet_name}/subnets/{subnet_name}"
+                            },
+                            "publicIPAddress": {
+                                "id": f"/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/publicIPAddresses/{ip_name}"
+                            },
+                        },
                     }
                 ]
             },
-        },
-    }
-    vm_resp = requests.put(vm_url, headers=headers, json=vm_payload)
+        }
+        nic_resp = requests.put(nic_url, headers=headers, json=nic_payload)
+        if nic_resp.status_code not in [200, 201, 202]:
+            return f"Failed creating NIC for {current_vm_name}: {nic_resp.text}", 400
 
-    if vm_resp.status_code in [200, 201, 202]:
-        return (
-            jsonify({"message": "VM deployment initiated successfully"}),
-            vm_resp.status_code,
-        )
-    else:
-        app.logger.error(f"VM deployment failed: {vm_resp.status_code}, {vm_resp.text}")
-        return (
-            jsonify({"error": "VM deployment failed. Please contact support."}),
-            vm_resp.status_code,
-        )
+        vm_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Compute/virtualMachines/{current_vm_name}?api-version=2022-03-01"
+        vm_payload = {
+            "location": location,
+            "identity": {"type": "SystemAssigned"},
+            "properties": {
+                "hardwareProfile": {"vmSize": vm_size},
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": publisher,
+                        "offer": offer,
+                        "sku": sku,
+                        "version": "latest",
+                    },
+                    "osDisk": {
+                        "createOption": "FromImage",
+                        "deleteOption": "Delete",
+                        "managedDisk": {"storageAccountType": "Standard_LRS"},
+                    },
+                    "dataDisks": [
+                        {
+                            "lun": 1,
+                            "createOption": "Empty",
+                            "diskSizeGB": disk_size,
+                            "deleteOption": "Delete",
+                        }
+                    ],
+                },
+                "osProfile": os_profile,
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": f"/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/networkInterfaces/{nic_name}",
+                            "properties": {"primary": True},
+                        }
+                    ]
+                },
+            },
+        }
+        vm_resp = requests.put(vm_url, headers=headers, json=vm_payload)
 
+        if vm_resp.status_code not in [200, 201, 202]:
+            app.logger.error(
+                f"VM deployment failed for {current_vm_name}: {vm_resp.status_code}, {vm_resp.text}"
+            )
+            return (
+                jsonify(
+                    {"error": f"VM deployment failed for {current_vm_name}. Please contact support."}
+                ),
+                vm_resp.status_code,
+            )
+    return jsonify({"message": f"{vm_amount} VM(s) deployment initiated successfully"}), 202
 
 ########################################
 # App Run

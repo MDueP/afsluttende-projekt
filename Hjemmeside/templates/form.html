@@ -20,34 +20,6 @@
       </div>
 
 
-<div id="vmNameResults" class="mt-3"></div>
-
-<script>
-document.getElementById('VM Amount').addEventListener('change', function () {
-    const amount = parseInt(this.value);
-    const baseName = document.getElementById('vm_name').value.trim();
-    const resultDiv = document.getElementById('vmNameResults');
-    resultDiv.innerHTML = '';
-
-    if (!baseName || isNaN(amount)) {
-        resultDiv.innerHTML = '<p class="text-danger">Please enter a base VM name and choose a valid amount.</p>';
-        return;
-    }
-
-    const list = document.createElement('ul');
-
-    for (let i = 1; i <= amount; i++) {
-        const name = i === 1 ? baseName : `${baseName}${i}`;
-        const li = document.createElement('li');
-        li.textContent = `VM ${i}: ${name}`;
-        list.appendChild(li);
-    }
-
-    resultDiv.appendChild(list);
-});
-</script>
-
-
     <div class="mb-3">
       <label for="location" class="form-label">Location</label>
       <select class="form-select" name="location" id="location">

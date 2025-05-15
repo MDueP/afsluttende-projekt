@@ -32,6 +32,4 @@ RUN pip install --no-cache /wheels/*
 
 COPY . $APP_HOME
 
-USER app
-
 EXPOSE 5000

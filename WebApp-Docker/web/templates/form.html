@@ -19,6 +19,7 @@
         <input type="text" class="form-control" id="vm_name" name="vm_name" placeholder="Name" required>
       </div>
 
+
     <div class="mb-3">
       <label for="location" class="form-label">Location</label>
       <select class="form-select" name="location" id="location">
@@ -91,6 +92,22 @@
             <option value="64">64 GiB (P6)</option>
             <option value="128">128 GiB (P10)</option>
             <option value="512">512 GiB (P20)</option>
+          </select>
+      </div>
+    </fieldset>
+
+    <fieldset class="row mb-3">
+      <legend>VM Amount</legend>
+      <div class="mb-3 form-check"> 
+        <label for="VM Amount" class="form-label">Choose amount of VM's</label>
+        <br>
+        <select class="VM Amount" name="VM Amount" id="VM Amount">
+            <option selected>Choose amount </option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
           </select>
       </div>
     </fieldset>

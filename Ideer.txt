@@ -1,6 +1,0 @@
-Idéer til afsluttende projekt:
-	- Push 2.semester projekt til Production med Docker
-		- Three-Tier Loadbalancer.
-		- Azure REST-API
-		- Bash Script til opsætning af Server
-		

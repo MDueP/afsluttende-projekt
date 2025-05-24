@@ -14,9 +14,6 @@ import uuid
 from msal import ConfidentialClientApplication
 import time
 
-
-######################
-# Encapsulation
 app = Flask(__name__)
 app.config.from_object(app_config.Config)
 Session(app)
@@ -31,14 +28,11 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
+
 def get_access_token():
     if "access_token" in session:
         return session["access_token"]
     return None
-
-
-################################
-# Route
 
 
 @app.route("/")
@@ -206,8 +200,7 @@ def deploy_vm():
                 "windowsConfiguration": {"enableAutomaticUpdates": True},
             }
         vnet_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/virtualNetworks/{vnet_name}?api-version=2023-04-01"
-        #################################################
-        # Payload
+
         vnet_payload = {
             "location": location,
             "properties": {

@@ -14,9 +14,6 @@ import uuid
 from msal import ConfidentialClientApplication
 import time
 
-
-######################
-# Encapsulation
 app = Flask(__name__)
 app.config.from_object(app_config.Config)
 Session(app)
@@ -33,10 +30,6 @@ def get_access_token():
     if "access_token" in session:
         return session["access_token"]
     return None
-
-
-################################
-# Route
 
 
 @app.route("/")
@@ -65,6 +58,7 @@ def logout():
         f"?post_logout_redirect_uri={url_for('home', _external=True)}"
     )
     return redirect(logout_url)
+
 
 @app.route(app.config["TOKEN_URI"])
 def authorized():
@@ -203,14 +197,16 @@ def deploy_vm():
                 "windowsConfiguration": {"enableAutomaticUpdates": True},
             }
         vnet_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/virtualNetworks/{vnet_name}?api-version=2023-04-01"
-        #################################################
-        # Payload
+
         vnet_payload = {
             "location": location,
             "properties": {
                 "addressSpace": {"addressPrefixes": ["10.0.0.0/16"]},
                 "subnets": [
-                    {"name": subnet_name, "properties": {"addressPrefix": "10.0.0.0/24"}}
+                    {
+                        "name": subnet_name,
+                        "properties": {"addressPrefix": "10.0.0.0/24"},
+                    }
                 ],
             },
         }
@@ -223,7 +219,9 @@ def deploy_vm():
         for i in range(10):
             subnet_resp = requests.get(subnet_url, headers=headers)
             if subnet_resp.status_code == 200:
-                state = subnet_resp.json().get("properties", {}).get("provisioningState")
+                state = (
+                    subnet_resp.json().get("properties", {}).get("provisioningState")
+                )
                 if state == "Succeeded":
                     print(f"Subnet is ready for {current_vm_name}!")
                     break
@@ -241,7 +239,10 @@ def deploy_vm():
         }
         ip_resp = requests.put(ip_url, headers=headers, json=ip_payload)
         if ip_resp.status_code not in [200, 201, 202]:
-            return f"Failed creating Public IP for {current_vm_name}: {ip_resp.text}", 400
+            return (
+                f"Failed creating Public IP for {current_vm_name}: {ip_resp.text}",
+                400,
+            )
 
         nic_url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/networkInterfaces/{nic_name}?api-version=2023-04-01"
         nic_payload = {
@@ -312,13 +313,16 @@ def deploy_vm():
             )
             return (
                 jsonify(
-                    {"error": f"VM deployment failed for {current_vm_name}. Please contact support."}
+                    {
+                        "error": f"VM deployment failed for {current_vm_name}. Please contact support."
+                    }
                 ),
                 vm_resp.status_code,
             )
-    return jsonify({"message": f"{vm_amount} VM(s) deployment initiated successfully"}), 202
+    return (
+        jsonify({"message": f"{vm_amount} VM(s) deployment initiated successfully"}),
+        202,
+    )
 
-########################################
-# App Run
 
 app.run(host="localhost", debug=True, port=5000)

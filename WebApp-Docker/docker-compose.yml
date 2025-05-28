@@ -2,7 +2,7 @@ services:
   web:
     build:
       context: ./web
-    command: gunicorn 'web:app' --bind 0.0.0.0:5000 --workers 3
+    command: gunicorn 'web:app' --bind 0.0.0.0:5000 --workers 3 -timeout 90
     ports:
       - "127.0.0.1:5000:5000"
     volumes:
